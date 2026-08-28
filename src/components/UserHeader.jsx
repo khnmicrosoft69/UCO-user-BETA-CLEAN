@@ -13,9 +13,11 @@ export default function UserHeader({ isMobile, onMenuToggle }) {
     }
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // The session cookie is httpOnly now, so it can only be cleared
+    // server-side — a direct document.cookie write silently no-ops on it.
+    await fetch('/api/logout', { method: 'POST' });
     localStorage.removeItem('user');
-    document.cookie = "session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
     window.location.href = '/login';
   };
 

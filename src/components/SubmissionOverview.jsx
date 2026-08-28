@@ -19,11 +19,12 @@ export default function SubmissionOverview() {
     const savedUser = JSON.parse(localStorage.getItem('user') || '{}');
     setUser(savedUser);
 
-    if (subId && savedUser.id) {
-      fetch(`/api/my-submissions?userId=${savedUser.id}`)
+    if (subId) {
+      // The backend derives the user from the session cookie itself.
+      fetch('/api/my-submissions')
         .then(res => res.json())
         .then(data => {
-          const found = data.find(s => s.id.toString() === subId);
+          const found = Array.isArray(data) ? data.find(s => s.id.toString() === subId) : null;
           if (found) {
             setSubmission(found);
             loadFiles(found);
@@ -145,11 +146,11 @@ export default function SubmissionOverview() {
         <div className="ml-auto flex-shrink-0">
           <span className={`inline-block px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider ${
             submission.status === "Completed" ? "bg-[#E6FFF5] text-[#05CD99]"
-            : submission.status === "In-process" ? "bg-[#E5F1FF] text-[#0075FF]"
-            : submission.status === "Rejected" ? "bg-[#FFE6E6] text-[#EE5D50]"
+            : submission.status === "Processing" ? "bg-[#E5F1FF] text-[#0075FF]"
+            : submission.status === "Not Accepted" ? "bg-[#FFE6E6] text-[#EE5D50]"
             : "bg-[#FFF9E6] text-[#FFB800]"
           }`}>
-            {submission.status === 'Rejected' ? 'Not Accepted' : (submission.status || "Pending")}
+            {submission.status || "Pending"}
           </span>
         </div>
       </div>
@@ -211,7 +212,7 @@ export default function SubmissionOverview() {
             <div className="p-4 bg-[#F4F7FE] rounded-2xl text-center">
               <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Current State</p>
               <p className="text-sm font-black text-[#1B2559] uppercase tracking-widest">
-                {submission.status === 'Rejected' ? 'Not Accepted' : (submission.status || "Pending")}
+                {submission.status || "Pending"}
               </p>
             </div>
           </div>

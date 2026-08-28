@@ -11,15 +11,14 @@ export default function HistoryTable() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedUser = JSON.parse(localStorage.getItem('user') || '{}');
-    if (savedUser.id) {
-      fetch(`/api/my-submissions?userId=${savedUser.id}`)
-        .then(res => res.json())
-        .then(data => {
-          setSubmissions(data);
-          setLoading(false);
-        });
-    }
+    // The backend now derives the user from the session cookie itself, so
+    // there's no userId to (or need to) send here.
+    fetch('/api/my-submissions')
+      .then(res => res.json())
+      .then(data => {
+        setSubmissions(Array.isArray(data) ? data : []);
+        setLoading(false);
+      });
   }, []);
 
   if (loading) return <div className="text-center py-12 animate-pulse text-slate-400 font-bold uppercase tracking-widest text-xs">Loading requests...</div>;
@@ -50,15 +49,20 @@ export default function HistoryTable() {
                 <td className="px-6 py-5 text-slate-500 font-medium text-xs">{s.service}</td>
                 <td className="px-6 py-5">
                   {(() => {
+                    // These values must match submissions.status exactly
+                    // ('Pending' | 'Processing' | 'Completed' | 'Not
+                    // Accepted') — the previous 'In-process'/'Rejected'
+                    // checks never matched anything real, so every
+                    // non-Pending, non-Completed submission silently showed
+                    // as Pending.
                     const status = s.status || 'Pending';
                     let color = 'bg-amber-100 text-amber-700';
-                    if (status === 'In-process') color = 'bg-blue-100 text-blue-700';
+                    if (status === 'Processing') color = 'bg-blue-100 text-blue-700';
                     else if (status === 'Completed') color = 'bg-green-100 text-green-700';
-                    else if (status === 'Rejected') color = 'bg-rose-100 text-rose-700';
-                    const displayStatus = status === 'Rejected' ? 'Not Accepted' : status;
+                    else if (status === 'Not Accepted') color = 'bg-rose-100 text-rose-700';
                     return (
                       <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${color}`}>
-                        {displayStatus}
+                        {status}
                       </span>
                     );
                   })()}

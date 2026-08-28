@@ -8,26 +8,29 @@ export default function MobileLanding({ onCreateRequest }) {
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
     if (!savedUser) return;
-    const user = JSON.parse(savedUser);
 
-    fetch(`/api/my-submissions?userId=${user.id}`)
+    // The backend derives the user from the session cookie itself.
+    fetch('/api/my-submissions')
       .then(res => res.json())
       .then(submissionsData => {
         if (Array.isArray(submissionsData)) {
           setRecentLogs(submissionsData.slice(0, 4));
 
-          // Compute counts directly from submissions data (reliable fallback)
+          // Compute counts directly from submissions data (reliable fallback).
+          // Must match submissions.status exactly ('Pending' | 'Processing' |
+          // 'Completed' | 'Not Accepted') — the previous 'In-process'/
+          // 'Rejected' checks never matched anything real.
           const counts = { pending: 0, inProcess: 0, completed: 0, rejected: 0 };
           submissionsData.forEach(s => {
             const status = (s.status || 'Pending').trim();
             if (status === 'Pending') counts.pending++;
-            else if (status === 'In-process') counts.inProcess++;
+            else if (status === 'Processing') counts.inProcess++;
             else if (status === 'Completed') counts.completed++;
-            else if (status === 'Rejected') counts.rejected++;
+            else if (status === 'Not Accepted') counts.rejected++;
           });
 
           // Try the dedicated metrics endpoint and use it only if it returns valid numbers
-          fetch(`/api/user-metrics?userId=${user.id}`)
+          fetch('/api/user-metrics')
             .then(res => res.ok ? res.json() : null)
             .then(metricsData => {
               if (
@@ -117,9 +120,9 @@ export default function MobileLanding({ onCreateRequest }) {
               {recentLogs.length > 0 ? recentLogs.map((log) => {
                 const status = log.status || 'Pending';
                 let statusColor = "bg-amber-100 text-amber-700";
-                if (status === 'In-process') statusColor = "bg-blue-100 text-blue-700";
+                if (status === 'Processing') statusColor = "bg-blue-100 text-blue-700";
                 else if (status === 'Completed') statusColor = "bg-green-100 text-green-700";
-                else if (status === 'Rejected') statusColor = "bg-rose-100 text-rose-700";
+                else if (status === 'Not Accepted') statusColor = "bg-rose-100 text-rose-700";
 
                 return (
                   <a
@@ -150,7 +153,7 @@ export default function MobileLanding({ onCreateRequest }) {
                       <span
                         className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${statusColor}`}
                       >
-                        {status === 'Rejected' ? 'Not Accepted' : status}
+                        {status}
                       </span>
                       <span className="text-slate-300 group-hover:text-indigo-400 transition-colors text-lg">→</span>
                     </div>
