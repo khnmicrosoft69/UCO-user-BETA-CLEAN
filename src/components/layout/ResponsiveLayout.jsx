@@ -2,6 +2,7 @@ import React, { useState, useEffect, createContext, useContext } from 'react';
 import { DesktopFrame } from './DesktopViewing';
 import { MobileFrame } from './MobileViewing';
 import UserHeader from '../UserHeader';
+import DbModeFloatingWidget from '../DbModeFloatingWidget'; // OFFLINE-MODE FEATURE
 
 const ResponsiveLayoutContext = createContext({ isMobile: false });
 
@@ -38,6 +39,7 @@ export default function ResponsiveLayout({ children }) {
   const content = (
     <ResponsiveLayoutContext.Provider value={{ isMobile }}>
       {children}
+      <DbModeFloatingWidget /> {/* OFFLINE-MODE FEATURE */}
     </ResponsiveLayoutContext.Provider>
   );
 

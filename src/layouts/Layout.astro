@@ -1,4 +1,5 @@
 ---
+import DbModeFloatingWidget from '../components/DbModeFloatingWidget.jsx'; // OFFLINE-MODE FEATURE
 const { title = "Astro Basics" } = Astro.props;
 ---
 
@@ -17,6 +18,7 @@ const { title = "Astro Basics" } = Astro.props;
 	</head>
 	<body>
 		<slot />
+		<DbModeFloatingWidget client:load /> <!-- OFFLINE-MODE FEATURE -->
 	</body>
 </html>
 

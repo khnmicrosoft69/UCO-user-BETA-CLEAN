@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import DbModeSwitch from './DbModeSwitch'; // OFFLINE-MODE FEATURE
 
 export default function UserLoginForm() {
   const [isLogin, setIsLogin] = useState(true);
@@ -258,11 +257,6 @@ export default function UserLoginForm() {
       <p className="text-center text-[10px] font-medium text-slate-400 dark:text-slate-500">
         UCO Media Request System - User Portal
       </p>
-
-      {/* OFFLINE-MODE FEATURE: remove this block to drop the DB source switch */}
-      <div className="flex justify-center pt-1">
-        <DbModeSwitch />
-      </div>
     </div>
   );
 }
