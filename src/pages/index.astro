@@ -1,0 +1,24 @@
+---
+import ResponsiveLayout from '../components/layout/ResponsiveLayout.jsx';
+import FormContainer from '../components/FormContainer.jsx';
+import '../styles/global.css';
+---
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UCO Media Request Portal</title>
+</head>
+<body class="bg-slate-50">
+  <ResponsiveLayout client:load>
+    <div class="max-w-6xl mx-auto">
+      <div class="mb-8">
+        <h2 class="text-3xl font-black text-slate-900 uppercase tracking-tight">Create New Request</h2>
+        <p class="text-slate-500 font-bold uppercase text-xs tracking-widest mt-1">Submit your media production requirements</p>
+      </div>
+      <FormContainer client:load />
+    </div>
+  </ResponsiveLayout>
+</body>
+</html>

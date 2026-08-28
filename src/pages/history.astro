@@ -1,0 +1,27 @@
+---
+import ResponsiveLayout from '../components/layout/ResponsiveLayout.jsx';
+import HistoryTable from '../components/HistoryTable.jsx';
+import '../styles/global.css';
+---
+
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Requests | UCO User Portal</title>
+</head>
+<body class="bg-slate-50">
+  <ResponsiveLayout client:load>
+    <div class="space-y-8">
+      <div>
+        <h2 class="text-3xl font-black text-slate-900 uppercase tracking-tight">Request History</h2>
+        <p class="text-slate-500 font-bold uppercase text-xs tracking-widest mt-1">Track and manage your submitted requests</p>
+      </div>
+      
+      <div class="bg-white rounded-[2.5rem] p-4 md:p-8 shadow-sm border border-slate-200">
+        <HistoryTable client:load />
+      </div>
+    </div>
+  </ResponsiveLayout>
+</body>
+</html>

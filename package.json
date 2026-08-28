@@ -1,0 +1,35 @@
+{
+  "name": "admin-dashboard",
+  "type": "module",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev --port 3000",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/react": "^5.0.7",
+    "@astrojs/vercel": "^11.0.3",
+    "@supabase/supabase-js": "^2.110.0",
+    "@tailwindcss/vite": "^4.3.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "apexcharts": "^5.14.0",
+    "astro": "^6.4.5",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.4.2",
+    "google-auth-library": "^10.9.1",
+    "googleapis": "^173.0.0",
+    "mime-types": "^3.0.2",
+    "postgres": "^3.4.9",
+    "react": "^19.2.7",
+    "react-apexcharts": "^2.1.0",
+    "react-dom": "^19.2.7",
+    "tailwindcss": "^4.3.0",
+    "xlsx": "^0.18.5"
+  }
+}

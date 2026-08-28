@@ -1,0 +1,23 @@
+---
+import Layout from '../layouts/Layout.astro';
+import UserLoginForm from '../components/UserLoginForm.jsx';
+import '../styles/global.css';
+---
+
+<Layout title="User Login | UCO Media Request System">
+	<main class="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-6 relative overflow-hidden transition-colors duration-300">
+		{/* Background decorative elements */}
+		<div class="absolute top-0 right-0 -mr-24 -mt-24 w-96 h-96 bg-[#0A1C5C] opacity-5 rounded-full blur-3xl"></div>
+		<div class="absolute bottom-0 left-0 -ml-24 -mb-24 w-96 h-96 bg-indigo-500 opacity-5 rounded-full blur-3xl"></div>
+		
+		<div class="relative z-10 w-full flex justify-center">
+			<UserLoginForm client:load />
+		</div>
+	</main>
+</Layout>
+
+<style>
+	main {
+		font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+	}
+</style>
