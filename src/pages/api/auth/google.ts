@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import sql from '../../../utils/db';
+import { requireSameOrigin } from '../../../utils/csrf';
 
 const GOOGLE_CLIENT_ID =
   import.meta.env.GOOGLE_CLIENT_ID ||
@@ -109,6 +110,9 @@ async function verifyGoogleToken(idToken: string): Promise<{
 // ---------------------------------------------------------------------------
 export const POST: APIRoute = async (context) => {
   const { request, cookies } = context;
+  const csrfResponse = requireSameOrigin(request);
+  if (csrfResponse) return csrfResponse;
+
   try {
     if (!GOOGLE_CLIENT_ID) {
       console.error('Google Login: PUBLIC_GOOGLE_CLIENT_ID is not set');

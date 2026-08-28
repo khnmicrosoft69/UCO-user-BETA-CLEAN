@@ -2,6 +2,23 @@ import type { APIRoute } from 'astro';
 import sql from '../../utils/db';
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
+import { requireSameOrigin } from '../../utils/csrf';
+
+// This endpoint previously accepted any file of any size with zero checks —
+// an attacker could upload arbitrarily large files (storage/cost abuse) or
+// files of a type never meant to be there (e.g. an .exe or .html file that
+// later gets served back with an inferred content-type). No auth is
+// required here since anonymous submission is intentional (user_id is
+// optional), so these limits are the only real backstop.
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
+const ALLOWED_EXTENSIONS = new Set(['.docx', '.pdf']);
+function isAllowedFile(file: File): boolean {
+  if (file.type.startsWith('image/') || file.type.startsWith('video/') || file.type.startsWith('audio/')) {
+    return true;
+  }
+  const name = file.name.toLowerCase();
+  return Array.from(ALLOWED_EXTENSIONS).some((ext) => name.endsWith(ext));
+}
 
 // Initialize Supabase client. Use Service Role key to bypass RLS.
 const supabase = createClient(
@@ -51,6 +68,9 @@ const intVal = (v: FormDataEntryValue | null): number | null => {
 };
 
 export const POST: APIRoute = async ({ request }) => {
+  const csrfResponse = requireSameOrigin(request);
+  if (csrfResponse) return csrfResponse;
+
   try {
     const formData = await request.formData();
 
@@ -143,6 +163,18 @@ export const POST: APIRoute = async ({ request }) => {
     const files = formData.getAll('files') as File[];
     for (const file of files) {
       if (file.size === 0) continue;
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        return new Response(
+          JSON.stringify({ message: `File "${file.name}" exceeds the 50MB size limit.` }),
+          { status: 400 },
+        );
+      }
+      if (!isAllowedFile(file)) {
+        return new Response(
+          JSON.stringify({ message: `File "${file.name}" is not an accepted file type.` }),
+          { status: 400 },
+        );
+      }
       const savedPath = await saveFile(file, folderName);
       if (file.name.endsWith('.docx') || file.name.endsWith('.pdf')) ppTemplateUrls.push(savedPath);
       else if (file.type.startsWith('image/'))  imageUrls.push(savedPath);
