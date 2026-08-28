@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { DesktopHeaderWrapper } from "./layout/DesktopViewing";
 import { MobileHeaderWrapper } from "./layout/MobileViewing";
+import DbModeSwitch from "./DbModeSwitch"; // OFFLINE-MODE FEATURE
 
 export default function UserHeader({ isMobile, onMenuToggle }) {
   const [user, setUser] = useState(null);
@@ -54,6 +55,8 @@ export default function UserHeader({ isMobile, onMenuToggle }) {
               Dashboard
             </a>
           </nav>
+          {/* OFFLINE-MODE FEATURE: remove this block to drop the DB source switch */}
+          <DbModeSwitch compact />
           <div className="w-px h-6 bg-white/10"></div>
           {user ? (
             <div className="flex items-center gap-3">

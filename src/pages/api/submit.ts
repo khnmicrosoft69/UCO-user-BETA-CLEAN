@@ -3,6 +3,10 @@ import sql from '../../utils/db';
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 import { requireSameOrigin } from '../../utils/csrf';
+import { getActiveMode } from '../../utils/dataSource'; // OFFLINE-MODE FEATURE
+import { mysqlExec } from '../../utils/mysqlDb'; // OFFLINE-MODE FEATURE
+import fs from 'fs'; // OFFLINE-MODE FEATURE
+import path from 'path'; // OFFLINE-MODE FEATURE
 
 // This endpoint previously accepted any file of any size with zero checks —
 // an attacker could upload arbitrarily large files (storage/cost abuse) or
@@ -49,6 +53,25 @@ const saveFile = async (file: File, folderName: string) => {
   return publicUrlData.publicUrl;
 };
 
+// OFFLINE-MODE FEATURE START - delete this function to remove the MySQL fallback
+// Supabase Storage needs internet just as much as Supabase Postgres does, so
+// when running on the MySQL fallback, files are saved to this project's own
+// uploads/ folder instead and served back through /api/files/ — same
+// folder/filename convention as saveFile() above, so paths line up with
+// what scripts/sync-files.mjs and scripts/sync-to-mysql.mjs's URL rewriter
+// already expect.
+const UPLOADS_ROOT = path.resolve(process.cwd(), 'uploads');
+const saveFileLocally = async (file: File, folderName: string) => {
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+  const destDir = path.join(UPLOADS_ROOT, folderName);
+  fs.mkdirSync(destDir, { recursive: true });
+  fs.writeFileSync(path.join(destDir, sanitizedFileName), buffer);
+  return `/api/files/${folderName}/${sanitizedFileName}`;
+};
+// OFFLINE-MODE FEATURE END
+
 // Helper: parse a nullable string from FormData
 const str = (v: FormDataEntryValue | null): string | null =>
   v && typeof v === 'string' && v.trim() !== '' ? v.trim() : null;
@@ -67,11 +90,12 @@ const intVal = (v: FormDataEntryValue | null): number | null => {
   return isNaN(n) ? null : n;
 };
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, cookies }) => {
   const csrfResponse = requireSameOrigin(request);
   if (csrfResponse) return csrfResponse;
 
   try {
+    const mode = await getActiveMode(cookies); // OFFLINE-MODE FEATURE
     const formData = await request.formData();
 
     // ----------------------------------------------------------------
@@ -149,7 +173,9 @@ export const POST: APIRoute = async ({ request }) => {
     const eventDetails          = str(formData.get('eventDetails'));
 
     // ----------------------------------------------------------------
-    // File Uploads → Supabase Storage
+    // File Uploads — Supabase Storage when online, local uploads/ folder
+    // when running on the MySQL fallback (Supabase Storage needs internet
+    // too).
     // ----------------------------------------------------------------
     const safeOfficeName = officeName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -175,7 +201,11 @@ export const POST: APIRoute = async ({ request }) => {
           { status: 400 },
         );
       }
-      const savedPath = await saveFile(file, folderName);
+      const savedPath = mode === 'mysql'
+        // OFFLINE-MODE FEATURE START - delete this ternary branch to remove the MySQL fallback
+        ? await saveFileLocally(file, folderName)
+        // OFFLINE-MODE FEATURE END
+        : await saveFile(file, folderName);
       if (file.name.endsWith('.docx') || file.name.endsWith('.pdf')) ppTemplateUrls.push(savedPath);
       else if (file.type.startsWith('image/'))  imageUrls.push(savedPath);
       else if (file.type.startsWith('video/'))  videoUrls.push(savedPath);
@@ -190,120 +220,149 @@ export const POST: APIRoute = async ({ request }) => {
     // ----------------------------------------------------------------
     // INSERT — All columns including new per-service fields
     // ----------------------------------------------------------------
-    await sql`
-      INSERT INTO submissions (
-        email,
-        request_type,
-        "mName",
-        "nNo",
-        "aName",
-        "aNo",
-        office_name,
-        user_id,
+    if (mode === 'mysql') {
+      // OFFLINE-MODE FEATURE START - delete this block to remove the MySQL fallback
+      await mysqlExec(
+        `INSERT INTO submissions (
+          email, request_type, \`mName\`, \`nNo\`, \`aName\`, \`aNo\`, office_name, user_id,
+          web_date_submitted, web_date_required, web_event_name, web_where_to_post, web_where_to_post_other, web_form_of_post,
+          \`socMed\`, social_service, social_service_other,
+          print_date_requested, print_date_needed, print_event_info, print_sizes, print_sizes_other, print_num_sheets,
+          pv_point_person, pv_event_date, pv_event_time, pv_event_location, pv_event_name, pv_event_info,
+          fb_point_person, fb_event_title, fb_event_date, fb_event_time, fb_duration, fb_coordinator,
+          service, other_service_detail,
+          \`ppTemplate\`, image, video, audio,
+          \`eventDetails\`
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          email, requestType, mName, nNo, aName, aNo, officeName, userId ? parseInt(userId) : null,
+          webDateSubmitted, webDateRequired, webEventName, webWhereToPost, webWhereToPostOther, webFormOfPost,
+          socMed, socialService, socialServiceOther,
+          printDateRequested, printDateNeeded, printEventInfo, printSizes, printSizesOther, printNumSheets,
+          pvPointPerson, pvEventDate, pvEventTime, pvEventLocation, pvEventName, pvEventInfo,
+          fbPointPerson, fbEventTitle, fbEventDate, fbEventTime, fbDuration, fbCoordinator,
+          service, otherServiceDetail,
+          ppTemplate, image, video, audio,
+          eventDetails,
+        ],
+      );
+      // OFFLINE-MODE FEATURE END
+    } else {
+      await sql`
+        INSERT INTO submissions (
+          email,
+          request_type,
+          "mName",
+          "nNo",
+          "aName",
+          "aNo",
+          office_name,
+          user_id,
 
-        -- Website
-        web_date_submitted,
-        web_date_required,
-        web_event_name,
-        web_where_to_post,
-        web_where_to_post_other,
-        web_form_of_post,
+          -- Website
+          web_date_submitted,
+          web_date_required,
+          web_event_name,
+          web_where_to_post,
+          web_where_to_post_other,
+          web_form_of_post,
 
-        -- Social Media
-        "socMed",
-        social_service,
-        social_service_other,
+          -- Social Media
+          "socMed",
+          social_service,
+          social_service_other,
 
-        -- Print Media
-        print_date_requested,
-        print_date_needed,
-        print_event_info,
-        print_sizes,
-        print_sizes_other,
-        print_num_sheets,
+          -- Print Media
+          print_date_requested,
+          print_date_needed,
+          print_event_info,
+          print_sizes,
+          print_sizes_other,
+          print_num_sheets,
 
-        -- Photo / Video Documentation
-        pv_point_person,
-        pv_event_date,
-        pv_event_time,
-        pv_event_location,
-        pv_event_name,
-        pv_event_info,
+          -- Photo / Video Documentation
+          pv_point_person,
+          pv_event_date,
+          pv_event_time,
+          pv_event_location,
+          pv_event_name,
+          pv_event_info,
 
-        -- Facebook Live
-        fb_point_person,
-        fb_event_title,
-        fb_event_date,
-        fb_event_time,
-        fb_duration,
-        fb_coordinator,
+          -- Facebook Live
+          fb_point_person,
+          fb_event_title,
+          fb_event_date,
+          fb_event_time,
+          fb_duration,
+          fb_coordinator,
 
-        -- Fallback / Other
-        service,
-        other_service_detail,
+          -- Fallback / Other
+          service,
+          other_service_detail,
 
-        -- Files
-        "ppTemplate",
-        image,
-        video,
-        audio,
+          -- Files
+          "ppTemplate",
+          image,
+          video,
+          audio,
 
-        -- Final Step
-        "eventDetails"
-      )
-      VALUES (
-        ${email},
-        ${requestType},
-        ${mName},
-        ${nNo},
-        ${aName},
-        ${aNo},
-        ${officeName},
-        ${userId ? parseInt(userId) : null},
+          -- Final Step
+          "eventDetails"
+        )
+        VALUES (
+          ${email},
+          ${requestType},
+          ${mName},
+          ${nNo},
+          ${aName},
+          ${aNo},
+          ${officeName},
+          ${userId ? parseInt(userId) : null},
 
-        ${webDateSubmitted},
-        ${webDateRequired},
-        ${webEventName},
-        ${webWhereToPost},
-        ${webWhereToPostOther},
-        ${webFormOfPost},
+          ${webDateSubmitted},
+          ${webDateRequired},
+          ${webEventName},
+          ${webWhereToPost},
+          ${webWhereToPostOther},
+          ${webFormOfPost},
 
-        ${socMed},
-        ${socialService},
-        ${socialServiceOther},
+          ${socMed},
+          ${socialService},
+          ${socialServiceOther},
 
-        ${printDateRequested},
-        ${printDateNeeded},
-        ${printEventInfo},
-        ${printSizes},
-        ${printSizesOther},
-        ${printNumSheets},
+          ${printDateRequested},
+          ${printDateNeeded},
+          ${printEventInfo},
+          ${printSizes},
+          ${printSizesOther},
+          ${printNumSheets},
 
-        ${pvPointPerson},
-        ${pvEventDate},
-        ${pvEventTime},
-        ${pvEventLocation},
-        ${pvEventName},
-        ${pvEventInfo},
+          ${pvPointPerson},
+          ${pvEventDate},
+          ${pvEventTime},
+          ${pvEventLocation},
+          ${pvEventName},
+          ${pvEventInfo},
 
-        ${fbPointPerson},
-        ${fbEventTitle},
-        ${fbEventDate},
-        ${fbEventTime},
-        ${fbDuration},
-        ${fbCoordinator},
+          ${fbPointPerson},
+          ${fbEventTitle},
+          ${fbEventDate},
+          ${fbEventTime},
+          ${fbDuration},
+          ${fbCoordinator},
 
-        ${service},
-        ${otherServiceDetail},
+          ${service},
+          ${otherServiceDetail},
 
-        ${ppTemplate},
-        ${image},
-        ${video},
-        ${audio},
+          ${ppTemplate},
+          ${image},
+          ${video},
+          ${audio},
 
-        ${eventDetails}
-      )
-    `;
+          ${eventDetails}
+        )
+      `;
+    }
 
     return new Response(JSON.stringify({ message: 'Success' }), {
       status: 200,

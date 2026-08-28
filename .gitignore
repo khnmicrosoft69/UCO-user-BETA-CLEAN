@@ -26,3 +26,11 @@ pnpm-debug.log*
 
 # Vercel
 .vercel/
+
+# background sync watcher state
+scripts/.watch-sync.lock
+scripts/.watch-sync.log
+
+# uploaded submission attachments - keep the folder, not its contents
+uploads/*
+!uploads/.gitkeep

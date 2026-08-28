@@ -6,10 +6,14 @@
     "node": ">=22.12.0"
   },
   "scripts": {
+    "predev": "node scripts/start-xampp.mjs && node scripts/startup-sync.mjs && node scripts/spawn-watch-sync.mjs",
     "dev": "astro dev --port 3000",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "sync-db": "node scripts/sync-to-mysql.mjs",
+    "sync-files": "node scripts/sync-files.mjs",
+    "watch-sync": "node scripts/watch-sync.mjs"
   },
   "dependencies": {
     "@astrojs/react": "^5.0.7",
@@ -21,6 +25,8 @@
     "astro": "^7.2.9",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
+    "mime-types": "^3.0.2",
+    "mysql2": "^3.24.2",
     "postgres": "^3.4.9",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",

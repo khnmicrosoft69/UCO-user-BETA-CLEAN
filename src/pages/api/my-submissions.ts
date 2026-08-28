@@ -1,10 +1,12 @@
 import type { APIRoute } from 'astro';
 import sql from '../../utils/db';
 import { requireAuth } from '../../utils/authz';
+import { getActiveMode } from '../../utils/dataSource'; // OFFLINE-MODE FEATURE
+import { mysqlQuery } from '../../utils/mysqlDb'; // OFFLINE-MODE FEATURE
 
 export const prerender = false;
 
-export const GET: APIRoute = async ({ request }) => {
+export const GET: APIRoute = async ({ request, cookies }) => {
   try {
     // Previously trusted a client-supplied ?userId= query param with no
     // session check at all — any caller could read any other user's
@@ -14,11 +16,16 @@ export const GET: APIRoute = async ({ request }) => {
     const auth = requireAuth(request);
     if (!auth.ok) return auth.response!;
 
-    const rows = await sql`
-      SELECT * FROM submissions
-      WHERE user_id = ${auth.userId}
-      ORDER BY created_at DESC
-    `;
+    const mode = await getActiveMode(cookies); // OFFLINE-MODE FEATURE
+    const rows = mode === 'mysql'
+      // OFFLINE-MODE FEATURE START - delete this ternary branch to remove the MySQL fallback
+      ? await mysqlQuery('SELECT * FROM submissions WHERE user_id = ? ORDER BY created_at DESC', [auth.userId])
+      // OFFLINE-MODE FEATURE END
+      : await sql`
+        SELECT * FROM submissions
+        WHERE user_id = ${auth.userId}
+        ORDER BY created_at DESC
+      `;
 
     return new Response(JSON.stringify(rows), {
       status: 200,
