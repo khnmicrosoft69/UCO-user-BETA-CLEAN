@@ -26,6 +26,12 @@ dotenv.config({ path: path.join(ROOT, '.env') });
 const POLL_INTERVAL_MS = Number(process.env.WATCH_SYNC_INTERVAL_MS) || 20_000;
 const LOCK_PATH = path.join(__dirname, '.watch-sync.lock');
 
+// This watcher is launched detached (spawn-watch-sync.mjs), so it has no
+// console of its own. Any child spawned with stdio:'inherit' would make
+// Windows pop a brand-new console window for it every sync cycle - append
+// child output to this log fd instead and hide the window.
+const LOG_FD = fs.openSync(path.join(__dirname, '.watch-sync.log'), 'a');
+
 const TABLES = [
   'admin_accounts',
   'login_attempts',
@@ -87,7 +93,8 @@ function runScript(scriptPath) {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [scriptPath], {
       cwd: ROOT,
-      stdio: 'inherit',
+      stdio: ['ignore', LOG_FD, LOG_FD],
+      windowsHide: true,
     });
     child.on('exit', () => resolve());
     child.on('error', (err) => {

@@ -33,8 +33,13 @@ export const onRequest = defineMiddleware((context, next) => {
     // re-issues the cookie with a fresh Max-Age, so an idle session expires
     // ~SESSION_MAX_AGE after the user's last request rather than only at a
     // fixed point after login.
+    // Skip the refresh on the logout endpoint: it is clearing this cookie in
+    // its own response, and re-issuing it here with a fresh Max-Age would
+    // immediately restore the session and defeat logout. This bites on Vercel
+    // in particular, where both Set-Cookie directives go out on the same
+    // HTTPS response and the refresh wins.
     const session = cookies.get("session");
-    if (session) {
+    if (session && url.pathname !== "/api/logout") {
       const isHttps = url.protocol === "https:";
       cookies.set("session", session.value, {
         path: "/",
